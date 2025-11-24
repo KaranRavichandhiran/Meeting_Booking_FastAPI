@@ -168,7 +168,7 @@ def update_booking(booking_id: int, b: Booking):
 
 
 #Cancel Booking
-@router.delete("{booking_id}")
+@router.delete("/{booking_id}")
 def delete_booking(booking_id: int):
     conn = get_connection()
     cursor = conn.cursor()

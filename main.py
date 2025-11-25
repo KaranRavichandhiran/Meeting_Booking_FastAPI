@@ -6,13 +6,10 @@ app = FastAPI(
     version="1.0.0",
     description="A simple versioned Booking API using FastAPI"
 )
+#server start_up
+@app.on_event("startup")
+def startup_event():
+    print("Starting up the Booking API...!")
 
 # API Versioning
-app.include_router(bookings_v1)
-
-@app.get("/")
-def root():
-    return {
-        "message": "Welcome to the Booking API",
-        "available_versions": ["/v1/bookings"]
-    }
+app.include_router(bookings_v1, prefix="/api/v1/bookings")

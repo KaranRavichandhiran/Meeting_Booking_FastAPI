@@ -2,11 +2,12 @@ from fastapi import APIRouter, HTTPException
 from models.models import Booking
 from database import get_connection, sqlite3
 from datetime import datetime
+from logger import logger
 
-router = APIRouter(prefix="/v1/bookings", tags=["Bookings - v1"])
+router = APIRouter(tags=["Bookings - v1"])
 
 #Create Booking
-@router.post("")
+@router.post("/")
 def create_booking(b: Booking):
     conn = get_connection()
     cursor = conn.cursor()
@@ -17,18 +18,25 @@ def create_booking(b: Booking):
             VALUES (?, ?, ?, ?)""", (b.customer_name, str(b.date), str(b.time), b.description))
     
         conn.commit()
+        
         booking_id = cursor.lastrowid
+        logger.info(f"New booking created with ID: {booking_id} for customer: {b.customer_name} on {b.date} at {b.time}")
         return {"message": "Your Booking Is Created Successfully..!", 
-            "booking_id": booking_id, "data": b}
+                "booking_id": booking_id, "data": b}
     
     except sqlite3.IntegrityError:
+        logger.error(f"Failed to create booking for customer: {b.customer_name} on {b.date} at {b.time} - Slot already booked")
         raise HTTPException(status_code=400, detail="This slot is already booked!")
-
+    
+    except Exception as e:
+        logger.exception("Unexpected error while creating booking")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    
     finally:
         conn.close()
 
 #Pagination + Filtering by date and customer_name
-@router.get("")
+@router.get("/")
 def get_bookings(
     page: int = 1,
     limit: int = 5,
@@ -39,6 +47,7 @@ def get_bookings(
     
     #Validate pagination input
     if page < 1 or limit < 1:
+        logger.warning(f"Invalid pagination parameters: page={page}, limit={limit}")
         raise HTTPException(status_code=400, detail="page & limit must be positive numbers.")
 
     offset = (page - 1) * limit
@@ -56,7 +65,10 @@ def get_bookings(
             valid_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
             where_clauses.append("date = ?")
             params.append(date_filter)
+            logger.info(f"Filtering bookings by date: {date_filter}")
+        
         except ValueError:
+            logger.warning(f"Invalid date format provided for filtering: {date_filter}")
             raise HTTPException(status_code=400, detail="Invalid date format | use this YYYY-MM-DD")
 
 
@@ -64,6 +76,7 @@ def get_bookings(
     if customer:
         where_clauses.append("customer_name LIKE ?")
         params.append(f"%{customer}%")  # partial match
+        logger.info(f"Filtering bookings by customer name: {customer}")
 
     #If filters exist, join with AND----Build where clause
     where_sql = ""
@@ -74,6 +87,7 @@ def get_bookings(
     rows = cursor.fetchall()
     
     if customer and not rows:
+        logger.info(f"No bookings found for customer name filter: {customer}")
         raise HTTPException(status_code=400, detail="Invalid coustomer name | Try again..!")
 
     #1) Count total filtered records
@@ -94,6 +108,7 @@ def get_bookings(
     rows = cursor.fetchall()
     conn.close()
 
+    logger.info(f"Fetched bookings - page: {page}, limit: {limit}, total_records: {total}")
     return {
         "total_records": total,
         "page": page,
@@ -112,14 +127,18 @@ def get_booking(search_value : str):
         booking_id = int(search_value)
         cursor.execute("SELECT * FROM bookings WHERE id = ?",(booking_id,))
         row = cursor.fetchone()
+        logger.info(f"Searching booking by ID: {booking_id}")
         
         if not row:
+            logger.warning(f"Booking not found for ID: {booking_id}")
             raise HTTPException(status_code=404, detail="Booking not found")
         
         #return single row for ID
+        logger.info(f"Booking found for ID: {booking_id}")
         return {"search_type": "id", "result": dict(row)}
 
     except ValueError:
+        logger.info(f"Searching bookings by customer name containing: {search_value}")
         cursor.execute("""
         SELECT * FROM bookings
         WHERE LOWER(customer_name) LIKE LOWER(?)
@@ -128,9 +147,11 @@ def get_booking(search_value : str):
         rows = cursor.fetchall()
 
         if not rows:
+            logger.error(f"No bookings found for customer name containing: {search_value}")
             raise HTTPException(status_code=404, detail="Booking Not Found That Name... | Try Again..")
         
         #return multiple result(for name)
+        logger.info(f"Found {len(rows)} bookings for customer name containing: {search_value}")
         return{
                 "search_type": "name",
                 "total_results": len(rows),
@@ -148,9 +169,11 @@ def update_booking(booking_id: int, b: Booking):
     cursor.execute("SELECT * FROM bookings WHERE id = ?", (booking_id,))
     if not cursor.fetchone():
         conn.close()
+        logger.warning(f"Booking not found for update with ID: {booking_id}")
         raise HTTPException(status_code=404, detail="Booking not found")
 
     try:
+        logger.info(f"Updating booking with ID: {booking_id}")
         cursor.execute("""
             UPDATE bookings
             SET customer_name=?, date=?, time=?, description=?
@@ -159,11 +182,13 @@ def update_booking(booking_id: int, b: Booking):
 
     except sqlite3.IntegrityError:
         conn.close()
+        logger.error(f"Failed to update booking ID: {booking_id} - Slot already booked")
         raise HTTPException(status_code=400, detail="Slot already booked!")
     
     finally:
         conn.close()
 
+    logger.info(f"Booking with ID: {booking_id} updated successfully")
     return {"message": "Your Booking Is Updated Successfully...!", "data": b}
 
 
@@ -176,10 +201,12 @@ def delete_booking(booking_id: int):
     cursor.execute("SELECT * FROM bookings WHERE id = ?", (booking_id,))
     if not cursor.fetchone():
         conn.close()
+        logger.warning(f"Booking not found for deletion with ID: {booking_id}")
         raise HTTPException(status_code=404, detail="Booking not found")
 
     cursor.execute("DELETE FROM bookings WHERE id = ?", (booking_id,))
     conn.commit()
     conn.close()
 
+    logger.info(f"Booking with ID: {booking_id} deleted successfully")
     return {"message": "Your Booking Is Canceled Successfully...!"}

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, field_validator
 from datetime import date, time
+from logger import logger
 import re
 
 class Booking(BaseModel):
@@ -13,6 +14,7 @@ class Booking(BaseModel):
     @field_validator("customer_name")
     def valid_name(cls, value):
         if not re.match(r"^[A-Za-z\s'-]+$", value):
+            logger.error(f"Invalid customer name format: {value}")
             raise ValueError("Customer name should contain only letters and spaces.")
         return value
 
@@ -20,6 +22,7 @@ class Booking(BaseModel):
     @field_validator("date")
     def prevent_past_date(cls, value):
         if value < date.today():
+            logger.error(f"Attempted to book past date: {value}")
             raise ValueError("Cannot book past dates!")
         return value
 
@@ -30,5 +33,6 @@ class Booking(BaseModel):
             value = value.replace(tzinfo=None)
 
         if value < time(8, 0) or value > time(20, 0):#8:00AM to 8:00PM
+            logger.error(f"Attempted to book outside allowed hours: {value}")
             raise ValueError("Booking allowed only between 08:00 and 20:00")
         return value

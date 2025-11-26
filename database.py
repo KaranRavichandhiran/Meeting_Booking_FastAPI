@@ -1,3 +1,4 @@
+from logger import logger
 import sqlite3
 
 DB_NAME = "booking.db"
@@ -5,6 +6,7 @@ DB_NAME = "booking.db"
 def get_connection():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
+    logger.debug("Database connection established.")
     return conn
 
 #Create Bookings Table
@@ -25,4 +27,5 @@ CREATE TABLE IF NOT EXISTS bookings (
 conn.commit()
 conn.close()
 
+logger.info("Database and bookings table initialized.")
 print("Booking table created!")

@@ -5,7 +5,7 @@ logger = logging.getLogger("booking_logger")
 logger.setLevel(logging.DEBUG)
 
 #create file handler
-file_handler = logging.filehandler("booking_app.log")
+file_handler = logging.FileHandler("booking_app.log")
 file_handler.setLevel(logging.DEBUG)
 
 #formate loges

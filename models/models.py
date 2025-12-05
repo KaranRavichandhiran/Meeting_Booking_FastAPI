@@ -5,10 +5,12 @@ import re
 
 class Booking(BaseModel):
     customer_name: str
+    customer_email: str
+    customer_phone: int
     date: date        # Validates YYYY-MM-DD
     time: time        # Validates HH:MM (24-hour)
     description: str | None = None
-
+    version: int = 1  # For optimistic locking
 
     #customer name format validation
     @field_validator("customer_name")

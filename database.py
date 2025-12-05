@@ -17,9 +17,13 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS bookings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     customer_name TEXT NOT NULL,
+    customer_email TEXT UNIQUE NOT NULL,
+    customer_phone INTEGER NOT NULL,
     date TEXT NOT NULL,
     time TEXT NOT NULL,
     description TEXT,
+    version INTEGER DEFAULT 1,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(date, time) -- Prevent double booking
 )
 """)

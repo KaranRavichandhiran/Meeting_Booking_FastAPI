@@ -21,7 +21,7 @@ def create_booking(b: Booking):
         
         booking_id = cursor.lastrowid
         logger.info(f"New booking created with ID: {booking_id} for customer: {b.customer_name} on {b.date} at {b.time}")
-        return {"status": "success", 
+        return {"status": "success",
                 "booking_id": booking_id, "message":"Your Booking Is Created Successfully..!", "info": b}
     
     except sqlite3.IntegrityError:

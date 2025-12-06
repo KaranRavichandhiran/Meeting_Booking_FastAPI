@@ -119,12 +119,12 @@ def get_bookings(
 
 #search by ID or NAME
 @router.get("/search/{search_value}")
-def get_booking(search_value : str):
+def get_booking(booking_id_or_name : str):
     conn = get_connection()
     cursor = conn.cursor()
 
     try:
-        booking_id = int(search_value)
+        booking_id = int(booking_id_or_name)
         cursor.execute("SELECT * FROM bookings WHERE id = ?",(booking_id,))
         row = cursor.fetchone()
         logger.info(f"Searching booking by ID: {booking_id}")
@@ -138,20 +138,20 @@ def get_booking(search_value : str):
         return {"search_type": "id", "result": dict(row)}
 
     except ValueError:
-        logger.info(f"Searching bookings by customer name containing: {search_value}")
+        logger.info(f"Searching bookings by customer name containing: {booking_id_or_name}")
         cursor.execute("""
         SELECT * FROM bookings
         WHERE LOWER(customer_name) LIKE LOWER(?)
-        """,(f"%{search_value}%",))
+        """,(f"%{booking_id_or_name}%",))
 
         rows = cursor.fetchall()
 
         if not rows:
-            logger.error(f"No bookings found for customer name containing: {search_value}")
-            raise HTTPException(status_code=404, detail="Booking Not Found That Name... | Try Again..")
+            logger.error(f"No bookings found for customer name containing: {booking_id_or_name}")
+            raise HTTPException(status_code=404, detail="Booking Not Found That ID | Name... | Try Again..")
         
         #return multiple result(for name)
-        logger.info(f"Found {len(rows)} bookings for customer name containing: {search_value}")
+        logger.info(f"Found {len(rows)} bookings for customer name containing: {booking_id_or_name}")
         return{
                 "search_type": "name",
                 "total_results": len(rows),
@@ -192,17 +192,7 @@ def update_booking(booking_id: int, b: Booking):
     logger.info(f"Booking with ID: {booking_id} updated successfully")
     return{
             "status": "success",
-            "info": {
-                "booking_id": ["id"],
-                "customer_name":["customer_name"],
-                "customer_email": ["customer_email"],
-                "customer_phone": ["customer_phone"],
-                "date": ["date"],
-                "time": ["time"],
-                "description": ["description"],
-                "version": ["version"],
-                "updated_at": ["updated_at"]
-            }
+            "info": b
         }
 
 
